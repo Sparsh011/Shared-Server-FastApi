@@ -26,7 +26,10 @@ async def loginWithCode(code: str):
     if response.status_code == 200:
         data = response.json()
         if "access_token" in data:
-            return _getUserDetailsFrom(access_token=data["access_token"])
+            user_details = _getUserDetailsFrom(access_token=data["access_token"])
+            # Access token is valid
+            user_details["is_token_valid"] = True
+            return user_details
         else:
             raise HTTPException(status_code=400, detail="Access token not found in response")
     else:
@@ -44,8 +47,36 @@ def _getUserDetailsFrom(access_token):
 
     if response.status_code == 200:
         data = response.json()
-        return data
+        return {"access_token": access_token, "user_details": data}
     elif response.status_code == 400:
-        raise HTTPException(status_code=400, detail="Access token not found in response")
+        response = {
+            "response": {
+                "is_token_valid": False,
+                "message": "Access Token Not Found"
+            }
+        }
+        return response
     else:
-        raise HTTPException(status_code=response.status_code, detail="Failed to get access token")
+        response = {
+            "response": {
+                "is_token_valid": False,
+                "message": "Access Token Not Found"
+            }
+        }
+        return response
+
+
+@app.get("/check-login-status")
+async def isUserLoggedIn(access_token):
+    try:
+        user_details = _getUserDetailsFrom(access_token=access_token)
+        # Access token is valid
+        user_details["is_token_valid"] = True
+        return user_details
+    except HTTPException as e:
+        # Access token is invalid
+        response = {
+            "is_token_valid": False,
+            "message": str(e)
+        }
+        return response
