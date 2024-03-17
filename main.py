@@ -3,6 +3,8 @@ import os
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 import Constants
 
@@ -73,10 +75,30 @@ async def isUserLoggedIn(access_token):
         # Access token is valid
         user_details["is_token_valid"] = True
         return user_details
-    except HTTPException as e:
+    except Exception as e:
         # Access token is invalid
         response = {
             "is_token_valid": False,
+            "message": str(e)
+        }
+        return response
+
+
+@app.get("/verify-google-auth-token")
+async def verifyGoogleAuthToken(token):
+    try:
+        response = {
+            "user_details": id_token.verify_oauth2_token(
+                token,
+                requests.Request(),
+                os.getenv(Constants.FIREBASE_WEB_SERVER_CLIENT_ID_KEY)
+            ),
+            "status": "Success"
+        }
+        return response
+    except Exception as e:
+        response = {
+            "status": "Failed",
             "message": str(e)
         }
         return response
